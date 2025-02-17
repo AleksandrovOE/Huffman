@@ -7,8 +7,8 @@ public enum Bit:byte { b0, b1 }; // бит
 public class HuffmanTree
 { // дерево Хаффмана
     public const byte ByteBitSize = 8;
-    public const short TreeSize = 512;
-    public const short HalfTreeSize = TreeSize / 2;
+    public const short TreeSize = 2 * HalfTreeSize;
+    public const short HalfTreeSize = byte.MaxValue + 1;
     public const ushort MaxCodeLengthInBits = byte.MaxValue;
     public const ushort MaxCodeLengthInBytes = (MaxCodeLengthInBits + 7) / 8;
 
@@ -21,7 +21,7 @@ public class HuffmanTree
     { // структура дерева Хаффмана
         public readonly Node[] Nodes;
         public short Root;
-        public Node this[short i] => Nodes[i - HalfTreeSize];
+        public Node this[short i] { get => Nodes[i - HalfTreeSize]; set { Nodes[i - HalfTreeSize] = value; } }
 
         public TreeStructure() { Root = -1; Nodes = new Node[HalfTreeSize]; }
         public bool Assign(Node[] treeNodes, short root)
@@ -124,12 +124,11 @@ public class HuffmanTree
     TreeStructure Tree;
     readonly NodeData[] NodesData;
     readonly short[] Indexes;
-    readonly ulong[] Cnts;
+    readonly uint[] Cnts;
     public readonly Code[] Codes;
     readonly DecodeAccelerator[] DecodeAccelerators;
-    public bool UseDecodeAccelerators = true;
 
-    public void Rebuild(ulong[] Counters)
+    public void Rebuild(uint[] Counters)
     {   // инициализация массивов
         if (Counters.Length != HalfTreeSize) throw new ArgumentException("Неверная длина массива Counters");
         Array.Copy(Counters, Cnts, HalfTreeSize);
@@ -138,7 +137,7 @@ public class HuffmanTree
         // сортировка частот 
         Array.Sort(Cnts, Indexes);
         // поиск первой ненулевой частоты в базовой таблице частот
-        var x = Array.BinarySearch(Cnts, 1ul); if (x < 0) x = ~x; else while (x > 0 && Cnts[x - 1] == 1ul) x--;
+        var x = Array.BinarySearch(Cnts, 1u); if (x < 0) x = ~x; else while (x > 0 && Cnts[x - 1] == 1u) x--;
         var iFirst = (short)Math.Min(x, HalfTreeSize - 2); // если меньше двух символов - добавляем фиктивные
         // добавление первого нового узла из базовой таблицы частот
         var nFirst = HalfTreeSize; var nLast = HalfTreeSize;
@@ -167,7 +166,7 @@ public class HuffmanTree
 
     void AddNode(short n, short l, short r)
     {
-        Tree.Nodes[n - HalfTreeSize] = new(l, r);
+        Tree[n] = new(l, r);
         NodesData[l].NextNodeNum = NodesData[r].NextNodeNum = n;
         NodesData[n].Count = NodesData[l].Count + NodesData[r].Count;
     }
@@ -299,7 +298,7 @@ public class HuffmanTree
         NodesData = new NodeData[TreeSize];
         Tree = new();
         Indexes = new short[HalfTreeSize]; 
-        Cnts = new ulong[HalfTreeSize];
+        Cnts = new uint[HalfTreeSize];
         Codes = new Code[HalfTreeSize]; var i = Codes.Length; while (i-- > 0) Codes[i] = new();
         DecodeAccelerators = new DecodeAccelerator[HalfTreeSize];
     }

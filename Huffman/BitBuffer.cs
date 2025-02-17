@@ -11,6 +11,7 @@ public class BitBuffer
     int CurrentByte; // текущий байт. При записи - свободный (частично). При чтении - непрочитанный (частично).
     int CurrentBit; // текущий свободный бит в байте. Только для записи.
     public long TotalBitsCount { get; private set; } // всего битов
+    public int TotalBytesCount { get => (int)((TotalBitsCount + 7) / 8); } // всего байтов
     ushort BuffBits; // буфер чтения байта. Только для чтения
     int BuffBitsLength; // количество бит в буфере чтения. Только для чтения
 
