@@ -129,11 +129,12 @@ public class HuffmanTree
     readonly DecodeAccelerator[] DecodeAccelerators;
 
     public void Rebuild(uint[] Counters)
-    {   // инициализация массивов
+    {   
         if (Counters.Length != HalfTreeSize) throw new ArgumentException("Неверная длина массива Counters");
+        // инициализация массивов
         Array.Copy(Counters, Cnts, HalfTreeSize);
-        var i = 0; foreach (var c in Cnts) NodesData[i++].Count = c;
-        var n = HalfTreeSize; while( n-- > 0) Indexes[n] = n;
+        { var i = 0; foreach (var c in Cnts) NodesData[i++].Count = c; }
+        { var i = HalfTreeSize; while (i-- > 0) Indexes[i] = i; }
         // сортировка частот 
         Array.Sort(Cnts, Indexes);
         // поиск первой ненулевой частоты в базовой таблице частот

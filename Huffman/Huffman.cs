@@ -7,8 +7,6 @@ public class Huffman
     const int ByteCountersCount = byte.MaxValue + 1;
     readonly byte[] Buffer;
     readonly BitBuffer BitBuffer = new();
-    int BufferByte;
-    byte BufferBit;
     readonly uint[] Counters;
     byte[]? Data = null;
     readonly HuffmanTree Tree;
@@ -22,10 +20,11 @@ public class Huffman
         CountData();
         Tree.Rebuild(Counters);
         Tree.CalculateCodes();
-        BitBuffer.Reset(Buffer);
         if (Tree.GetCompressedSizeInBytes() > Buffer.Length) return false;
+        BitBuffer.Reset(Buffer);
         foreach (var b in Data) if(!BitBuffer.AddBits(Tree.Codes[b].BitLength, Tree.Codes[b].Bits)) return false;
-        CountByteInBuffer = BitBuffer.TotalBytesCount; CountBitsInBuffer = BitBuffer.TotalBitsCount;
+        CountByteInBuffer = BitBuffer.TotalBytesCount; 
+        CountBitsInBuffer = BitBuffer.TotalBitsCount;
         return true;
     }
 
