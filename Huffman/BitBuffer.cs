@@ -7,7 +7,8 @@ public enum Operation: byte { Read, Write };
 public class BitBuffer
 { // для чтения и записи буфера порциями бит не кратными 8 (байту).
     byte[]? Buffer;
-    Operation CurrentOperation = Operation.Read;
+    int BufferSize;
+    Operation Operation = Operation.Read;
     int CurrentByte; // текущий байт. При записи - свободный (частично). При чтении - непрочитанный (частично).
     int CurrentBit; // текущий свободный бит в байте. Только для записи.
     public long TotalBitsCount { get; private set; } // всего битов
@@ -15,39 +16,41 @@ public class BitBuffer
     ushort BuffBits; // буфер чтения байта. Только для чтения
     int BuffBitsLength; // количество бит в буфере чтения. Только для чтения
 
-    public BitBuffer(byte[] Buffer) => Reset(Buffer, Operation.Read);
-    public BitBuffer() => Reset(null);
+    public BitBuffer(byte[] Buffer) => Reset(Buffer, Buffer.Length,  Operation.Read);
+    public BitBuffer() => Reset(null, 0);
 
-    public void Reset(byte[]? Buffer, Operation operation = Operation.Read) // подключить байтовый буфер и установит текущую позицию на начало
-    { 
-        this.Buffer = Buffer; 
+    public void Reset(byte[]? Buffer, int size, Operation operation = Operation.Read) // подключить байтовый буфер и установит текущую позицию на начало
+    {
+        if (size < 0 || Buffer?.Length < size) throw new Exception("Некорректный размер size={size}");
+        this.Buffer = Buffer;
+        BufferSize = size;
         CurrentByte = 0; CurrentBit = 0; 
         TotalBitsCount = 0; 
         BuffBits = 0; BuffBitsLength = 0;
-        CurrentOperation = operation;
+        Operation = operation;
     }
 
-    public bool AddBits(int bitsCount, byte[] bits) // записать порцию бит в буфер
+    public bool AddBits(byte bitsCount, byte[] bits) // записать порцию бит в буфер
     {
-        if (CurrentOperation != Operation.Read) throw new Exception("Буфер должен быть в состоянии Read");
+        if (Operation != Operation.Write) throw new Exception("Буфер должен быть в состоянии Write");
         var fullBitCount = bitsCount + CurrentBit;
         var fullByteCount = (fullBitCount + 7) >> 3;
         if ( (CurrentByte + fullByteCount) > Buffer?.Length) return false;
         TotalBitsCount += bitsCount;
         if (CurrentBit == 0)
-        {
+        { // без сдвига
             Array.Copy(bits, 0, Buffer, CurrentByte, fullByteCount);
             CurrentByte += (fullBitCount >> 3);
         }
         else
-        {
-            var bitShift = (8 - CurrentBit);
+        { // со сдвигом
+            var shift = (8 - CurrentBit);
             var byteCount = (bitsCount + 7) >> 3;
             var buf = (ushort)Buffer[CurrentByte];
             // копирование полных байт в выходной буфер 
             for (var i = 0; i < byteCount; i++)
             {
-                buf = (ushort)((buf << 8) | (bits[i] << bitShift));
+                buf = (ushort)((buf << 8) | (bits[i] << shift));
                 Buffer[CurrentByte++] = (byte)(buf >> 8);
             }
             if (byteCount < fullByteCount) Buffer[CurrentByte] = (byte)buf;
@@ -56,20 +59,23 @@ public class BitBuffer
         return true;
     }
 
-    public bool GetByte(byte bitsCount, out byte @byte) // пропустить bitsCount бит и вернуть следующую за ними порцию 8 бит (байт)
+    public bool Get8Bits(byte bitsCount, out byte _8bits) // пропустить bitsCount бит и вернуть следующую за ними порцию 8 бит (байт)
     {
-        if (CurrentOperation != Operation.Write) throw new Exception("Буфер должен быть в состоянии Write");
+        if (Operation != Operation.Read) throw new Exception("Буфер должен быть в состоянии Read");
+        if (bitsCount > 8) throw new Exception("Значение bitsCount = {bitsCount}");
         BuffBitsLength -= bitsCount; TotalBitsCount += bitsCount;
-        if (BuffBitsLength < 8)
+        BuffBits <<= bitsCount;
+        if (BuffBitsLength < 8) 
         {
             if (CurrentByte < Buffer?.Length)
             {
-                BuffBits = (ushort)((BuffBits << bitsCount) | Buffer[CurrentByte++]);
+                var shift = (8 - BuffBitsLength);
+                BuffBits = (ushort)( ((BuffBits >> shift) | Buffer[CurrentByte++]) << shift );
                 BuffBitsLength += 8;
             }
-            if (BuffBitsLength == 0) { @byte = 0; return false; }
+            else if (BuffBitsLength == 0) { _8bits = 0; return false; }
         }
-        @byte = (byte)(BuffBits >> 8);
+        _8bits = (byte)(BuffBits >> 8);
         return true;
     }
 } // для чтения/записи буфера порциями бит не кратными 8 (байту).

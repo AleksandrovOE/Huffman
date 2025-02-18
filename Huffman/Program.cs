@@ -18,10 +18,14 @@ internal class Program
         Console.WriteLine($"x = {x}, decodedBitsCount = {decodedBitsCount}");
 
 
-        var hf = new Huffman(10000);
-        var b = new byte[9000];
-        var n = b.Length; while (n-- > 0) b[n] = (byte)Random.Shared.Next(256);
-        hf.Encode(b);
-        Console.WriteLine($"размер = {hf.CountByteInBuffer} байт, {hf.CountBitsInBuffer} бит");
+        Huffman hf = new(10000);
+        var dataBuffer = new byte[9000];
+        var n = dataBuffer.Length; while (n-- > 0) dataBuffer[n] = (byte)Random.Shared.Next(256);
+        var res = hf.Encode(dataBuffer, dataBuffer.Length);
+        Console.WriteLine($"{res} размер = {hf.CountByteInBuffer} байт, {hf.CountBitsInBuffer} бит");
+
+        var bitsCount = hf.CountBitsInBuffer;
+        var EncodedBuffer = (byte[])hf.Buffer.Clone();
+        var resD = hf.Decode(EncodedBuffer, bitsCount);
     }
 }
