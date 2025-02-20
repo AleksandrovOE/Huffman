@@ -16,7 +16,7 @@ public class BitBuffer
     ushort BuffBits; // буфер чтения байта. Только для чтения
     int BuffBitsLength; // количество бит в буфере чтения. Только для чтения
 
-    public BitBuffer(byte[] Buffer) => Reset(Buffer, Buffer.Length,  Operation.Read);
+    public BitBuffer(byte[] Buffer, Operation operation = Operation.Read) => Reset(Buffer, Buffer.Length, operation);
     public BitBuffer() => Reset(null, 0);
 
     public void Reset(byte[]? Buffer, int size, Operation operation = Operation.Read) // подключить байтовый буфер и установит текущую позицию на начало

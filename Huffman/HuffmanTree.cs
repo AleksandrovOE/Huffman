@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq.Expressions;
 using static Huffman.HuffmanTree;
 
 namespace Huffman;
@@ -11,7 +12,7 @@ public class HuffmanTree
     public const short TreeSize = 2 * HalfTreeSize;
     public const short HalfTreeSize = byte.MaxValue + 1;
     public const ushort MaxCodeLengthInBits = byte.MaxValue;
-    public const ushort MaxCodeLengthInBytes = (MaxCodeLengthInBits + 7) / 8;
+    public const ushort MaxCodeLengthInBytes = (MaxCodeLengthInBits + ByteBitSize - 1) / ByteBitSize;
 
     public record struct Node(short UpLeftNodeNum, short UpRightNodeNum) // узел для дерева Хаффмана
     {
@@ -68,6 +69,26 @@ public class HuffmanTree
             }
             return true;
         }
+        public (byte[] data, int bitLength) Serialize() // возвращает данные дерева в бинарном массиве
+        {
+            var sizeInNodes = Root - HalfTreeSize + 1;
+            var bitLength = sizeInNodes * 2 * (ByteBitSize + 1);
+            var sizeInBytes = (bitLength + ByteBitSize - 1) / ByteBitSize;
+            var data = new byte[sizeInBytes];
+            BitBuffer bb = new(data, Operation.Write);
+            var a = new byte[2];
+            for ( var n = 0; n < sizeInNodes; n++)
+            {
+                var node = Nodes[n];
+                a[0] = (byte)node.UpLeftNodeNum;
+                a[1] = (byte)(node.UpLeftNodeNum >> ByteBitSize);
+                bb.AddBits(ByteBitSize + 1, a);
+                a[0] = (byte)node.UpRightNodeNum;
+                a[1] = (byte)(node.UpRightNodeNum >> ByteBitSize);
+                bb.AddBits(ByteBitSize + 1, a);
+            }
+            return (data, bitLength);
+        }
     } // структура дерева Хаффмана
     record struct NodeData(ulong Count, short NextNodeNum) // доп.данные для дерева Хаффмана
     {
@@ -90,7 +111,7 @@ public class HuffmanTree
         public void CopyFrom(Code code)
         {
             BitLength = code.BitLength;
-            _8bitsNodeNum = BitLength > 8 ? code._8bitsNodeNum : (short)-1;
+            _8bitsNodeNum = BitLength > ByteBitSize ? code._8bitsNodeNum : (short)-1;
             Array.Copy(code.Bits, Bits, UsedByteCount);
         }
         public bool EqualsTo(Code code)
@@ -113,9 +134,9 @@ public class HuffmanTree
             if (bit == Bit.b1) Bits[ByteNum] ^= (byte)(1 << BitNum);
         }
 
-        public int UsedByteCount { get => (BitLength + 7) / 8; }
-        public int ByteNum { get => BitLength / 8; }
-        public int BitNum { get => BitLength % 8; }
+        public int UsedByteCount { get => (BitLength + ByteBitSize - 1) / ByteBitSize; }
+        public int ByteNum { get => BitLength / ByteBitSize; }
+        public int BitNum { get => BitLength % ByteBitSize; }
     } // битовый код символа(байта) Хаффмана
     public struct DecodeAccelerator
     { // ускоритель декодировки байта для Хаффмана
@@ -169,6 +190,8 @@ public class HuffmanTree
         }
     }
 
+    public void Assign(TreeStructure tree) => Tree = tree;
+
     void AddNode(short n, short l, short r)
     {
         Tree[n] = new(l, r);
@@ -177,11 +200,10 @@ public class HuffmanTree
     }
 
     public void CalculateCodes()
-    {
-        var code = new Code(); // для вычисления текущего кода
+    {   var code = new Code(); // для вычисления текущего кода
         var i = Codes.Length; while (i-- > 0) Codes[i].MakeEmpty(); // зануляем массив кодов
         var node = Tree.RootNode;
-        Calculate(node.UpLeftNodeNum, Bit.b0); // вычисляем для левой ветки
+        Calculate(node.UpLeftNodeNum,  Bit.b0); // вычисляем для левой ветки
         Calculate(node.UpRightNodeNum, Bit.b1); // вычисляем для правой ветки
         ///////////////////////////////////////
         void Calculate(short nodeNum, Bit bit) // рекурсивный вычислитель
@@ -191,8 +213,8 @@ public class HuffmanTree
                 Codes[nodeNum].CopyFrom(code); // завершено вычисление кода 
             else
             { // продолжаем вычисление...
-                if (code.BitLength == 8) code._8bitsNodeNum = nodeNum;
-                Calculate(Tree[nodeNum].UpLeftNodeNum, Bit.b0);
+                if (code.BitLength == ByteBitSize) code._8bitsNodeNum = nodeNum; // запоминаем декодировку первых 8 бит
+                Calculate(Tree[nodeNum].UpLeftNodeNum,  Bit.b0);
                 Calculate(Tree[nodeNum].UpRightNodeNum, Bit.b1);
             }
             code.DelBit(bit);
@@ -211,22 +233,20 @@ public class HuffmanTree
         таблице, а остаток кода можно декодировать проходом по дереву.
       */
         Array.Fill(DecodeAccelerators, DecodeAccelerator.Empty);
-        var nodeNum = (short)0;
-        foreach (var c in Codes)
-        {
-            if (c.BitLength > 0)
+        for (var nodeNum = (short)0; nodeNum < HalfTreeSize; nodeNum++)
+        {   var code = Codes[nodeNum];
+            if (code.BitLength > 0)
             {
-                var codeByte = c[0];
-                if (c.BitLength <= 8)
+                var codeByte = code[0];
+                if (code.BitLength <= ByteBitSize)
                 {
-                    var da = DecodeAccelerators[codeByte] = new(nodeNum, c.BitLength);
-                    var b = 1 << (ByteBitSize - c.BitLength);
-                    while (--b > 0) DecodeAccelerators[(b << c.BitLength) | codeByte] = da;
+                    var da = DecodeAccelerators[codeByte] = new(nodeNum, code.BitLength);
+                    var b = 1 << (ByteBitSize - code.BitLength);
+                    while (--b > 0) DecodeAccelerators[(b << code.BitLength) | codeByte] = da;
                 }
                 else if (DecodeAccelerators[codeByte].BitLength == 0)
-                    DecodeAccelerators[codeByte] = new(c._8bitsNodeNum, 8);
+                    DecodeAccelerators[codeByte] = new(code._8bitsNodeNum, ByteBitSize);
             }
-            nodeNum++;
         }
     }
 
@@ -237,7 +257,7 @@ public class HuffmanTree
         return s;
     }
 
-    public int GetCompressedSizeInBytes() => (int)((GetCompressedSizeInBits() + 7) / 8);
+    public int GetCompressedSizeInBytes() => (int)((GetCompressedSizeInBits() + ByteBitSize - 1) / ByteBitSize);
 
     public short DecodeBits(byte @byte, out byte decodedBitsCount, short startNodeNum = TreeSize)
     {
@@ -277,7 +297,7 @@ public class HuffmanTree
         {
             var @byte = code.Bits[i++];
             node = DecodeBitsNoAcc(@byte, out decodedBitsCount, node);
-            if (i == 1 && code.BitLength > 8) _8bitNode = node;
+            if (i == 1 && code.BitLength > ByteBitSize) _8bitNode = node;
             leftBitsCount -= decodedBitsCount;
             if (node < HuffmanTree.HalfTreeSize) break;
         }

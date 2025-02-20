@@ -5,7 +5,7 @@ internal class Program
     static void Main(string[] args)
     {
         Console.WriteLine($"Hello, World! {1<<2}");
-        var ht = new HuffmanTree();
+        HuffmanTree ht = new();
         var a = new uint[256];
         var i = 256;
         while (i-- > 0)
@@ -21,11 +21,11 @@ internal class Program
         var bb = (byte)121;
         Console.WriteLine($"bb = {bb:B8}");
         var x = ht.DecodeBits(bb, out var decodedBitsCount);
-        Console.WriteLine($"code[x] = {ht.Codes[x].Bits[0]:B8}, lenght = {ht.Codes[x].BitLength}");
         Console.WriteLine($"x = {x}, decodedBitsCount = {decodedBitsCount}");
+        if(x < HuffmanTree.HalfTreeSize) Console.WriteLine($"code[x] = {ht.Codes[x].Bits[0]:B8}, lenght = {ht.Codes[x].BitLength}");
         x = ht.DecodeBitsNoAcc(bb, out decodedBitsCount);
-        Console.WriteLine($"code[x] = {ht.Codes[x].Bits[0]:B8}, lenght = {ht.Codes[x].BitLength}");
         Console.WriteLine($"x = {x}, decodedBitsCount = {decodedBitsCount}");
+        if (x < HuffmanTree.HalfTreeSize) Console.WriteLine($"code[x] = {ht.Codes[x].Bits[0]:B8}, lenght = {ht.Codes[x].BitLength}");
 
 
         Huffman hf = new(10000);
