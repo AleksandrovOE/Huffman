@@ -77,7 +77,7 @@ public class HuffmanTree
     { // битовый код символа(байта) Хаффмана
         public byte BitLength { get; private set; }
         public readonly byte[] Bits;
-        public short _8bitsNode = -1; // узел декодирования первых 8 бит
+        public short _8bitsNodeNum = -1; // узел декодирования первых 8 бит
         public byte this[int i] => Bits[i];
         public static Code Empty = new();
         public Code() => Bits = new byte[MaxCodeLengthInBytes];
@@ -90,7 +90,7 @@ public class HuffmanTree
         public void CopyFrom(Code code)
         {
             BitLength = code.BitLength;
-            _8bitsNode = BitLength > 8 ? code._8bitsNode : (short)-1;
+            _8bitsNodeNum = BitLength > 8 ? code._8bitsNodeNum : (short)-1;
             Array.Copy(code.Bits, Bits, UsedByteCount);
         }
         public bool EqualsTo(Code code)
@@ -191,7 +191,7 @@ public class HuffmanTree
                 Codes[nodeNum].CopyFrom(code); // завершено вычисление кода 
             else
             { // продолжаем вычисление...
-                if (code.BitLength == 8) code._8bitsNode = nodeNum;
+                if (code.BitLength == 8) code._8bitsNodeNum = nodeNum;
                 Calculate(Tree[nodeNum].UpLeftNodeNum, Bit.b0);
                 Calculate(Tree[nodeNum].UpRightNodeNum, Bit.b1);
             }
@@ -224,7 +224,7 @@ public class HuffmanTree
                     while (--b > 0) DecodeAccelerators[(b << c.BitLength) | codeByte] = da;
                 }
                 else if (DecodeAccelerators[codeByte].BitLength == 0)
-                    DecodeAccelerators[codeByte] = new(c._8bitsNode, 8);
+                    DecodeAccelerators[codeByte] = new(c._8bitsNodeNum, 8);
             }
             nodeNum++;
         }
@@ -309,9 +309,9 @@ public class HuffmanTree
                 if (throwException) throw new Exception($"Неверный код. Длина {leftBitsCount}");
                 return false;
             }
-            if (_8bitNode != Codes[i]._8bitsNode)
+            if (_8bitNode != Codes[i]._8bitsNodeNum)
             {
-                if (throwException) throw new Exception($"Неверный код для 8 бит. {_8bitNode} != {Codes[i]._8bitsNode}");
+                if (throwException) throw new Exception($"Неверный код для 8 бит. {_8bitNode} != {Codes[i]._8bitsNodeNum}");
                 return false;
             }
         }
