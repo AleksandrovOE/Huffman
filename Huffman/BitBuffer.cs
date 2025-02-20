@@ -63,10 +63,10 @@ public class BitBuffer
     {
         if (Operation != Operation.Read) throw new Exception("Буфер должен быть в состоянии Read");
         if (bitsCount > 8) throw new Exception("Значение bitsCount = {bitsCount}");
+        if (bitsCount > BuffBitsLength) throw new Exception("Значение bitsCount = {bitsCount} не согласовано с длиной буфера {BuffBitsLength}");
         BuffBitsLength -= bitsCount; TotalBitsCount += bitsCount;
         BuffBits <<= bitsCount;
         if (BuffBitsLength < 8) 
-        {
             if (CurrentByte < Buffer?.Length)
             {
                 var shift = (8 - BuffBitsLength);
@@ -74,7 +74,6 @@ public class BitBuffer
                 BuffBitsLength += 8;
             }
             else if (BuffBitsLength == 0) { _8bits = 0; return false; }
-        }
         _8bits = (byte)(BuffBits >> 8);
         return true;
     }
